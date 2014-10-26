@@ -1,24 +1,28 @@
 %%%----------------------------------------------------------------------
-%%% File    : atm.erl
-%%% Author  :	José A. L. Sebio <jose.antonio.lopez.sebio@udc.es>
-%%%					: Denis Graña 		 <denis.gfernandez@udc.es>
-%%% Purpose : atm client
-%%% Created : 24 October 2014
+%%% File    : 	atm.erl
+%%% Author  :	José A. L. Sebio 	<jose.antonio.lopez.sebio@udc.es>
+%%%			: 	Denis Graña 		<denis.gfernandez@udc.es>
+%%% Purpose : 	atm client
+%%% Created : 	24 October 2014
 %%%----------------------------------------------------------------------
 -module(atm).
--export([connect/0,disconnect/1,withdraw_money/2,deposit_money/3,recharge/4])
+-export([deposit_money/3,withdraw_money/3]).
+-define(BANK_NODE,'bank@anger-2').
 
-connect(d)->
-	.
+%connect(d)->
 
-disconnect()->
-	.
+%disconnect()->
 
-withdraw_money(c,p,d)->
-	.
+withdraw_money(Id,Pin,Money)->
+	{bank,?BANK_NODE} ! {withdrawMoney,Id,Pin,Money,self()},
+	receive
+		Message -> 	io:format(Message)				
+	end.
+%NO VALE
+deposit_money(Id,Pin,Money)->
+	{bank,?BANK_NODE} ! {depositMoney,Id,Pin,Money,self()},
+	receive
+		Message -> 	io:format(Message)				
+	end.
 
-deposit_money(c,p,d)->
-	.
-
-recharge(d)->
-	.
+%recharge(d)->
