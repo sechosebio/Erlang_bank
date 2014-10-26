@@ -18,10 +18,20 @@ start()->
 		undefined	->	register(bank,self()),
 						io:format("Bank Registered\n"),
 						bank(
-							{[],[]}
+							{
+								[], 	%Client List
+								[],		%Atm List
+								0	%Bank Money Balance
+							}
 						);
 		_			->	io:format("Bank Already Registered\n"),
-						bank({[],[]})
+						bank(
+							{
+								[], 	%Client List
+								[],		%Atm List
+								0	%Bank Money Balance
+							}
+						)
 	end.
 
 %%
@@ -34,6 +44,9 @@ bank(Data)->
 				user_exists ->		io:format("Can't create account, User Exists\n"),
 									Pid ! "Can't create account, User Exists\n",
 									bank(Data);
+				wrong_quantity ->	io:format("Can't create account, must put > 0€\n"),
+									Pid ! "Can't create account, must put > 0€\n",
+									bank(data);
 				Tuple -> 	io:format("Account Created\n"),
 							Pid ! "Account Created\n",
 							bank(Tuple)
@@ -106,20 +119,24 @@ bank(Data)->
 % ------------------------------------------------------ %
 % -------------------BANK FUNCTUIONS-------------------- %
 % ------------------------------------------------------ %
-open_account({ClientList,AtmList},ClientId,Pin,Money) ->
-	%keyfind(Key, N, TupleList) -> Tuple | false 
-	%N is the position of the key in the tuple
-	case lists:keyfind(ClientId,1,ClientList) of
-		false ->
-			%Create new Tuple in the Client List that represents the Client data
-			{lists:append(ClientList,[{ClientId,Pin,Money}]),AtmList};
-		_->
-			%Client exist, we do nothing
-			user_exists	
+open_account({ClientList,AtmList,Balance},ClientId,Pin,Money) ->
+	case Money > 0 of
+		true	->
+			%keyfind(Key, N, TupleList) -> Tuple | false 
+			%N is the position of the key in the tuple
+			case lists:keyfind(ClientId,1,ClientList) of
+				false ->
+					%Create new Tuple in the Client List that represents the Client data
+					{lists:append(ClientList,[{ClientId,Pin,Money}]),AtmList,Balance+Money};
+				_->
+					%Client exist, we do nothing
+					user_exists	
+			end;
+		false	-> wrong_quantity
 	end.
 
 
-close_account({ClientList,AtmList},ClientId,Pin)->
+close_account({ClientList,AtmList,Balance},ClientId,Pin)->
 	case lists:keyfind(ClientId,1,ClientList) of
 		false->
 			%User doesn't exists
@@ -127,8 +144,8 @@ close_account({ClientList,AtmList},ClientId,Pin)->
 		Tuple->
 			%Check the pin
 			case Tuple of
-				{_,Pin,_} 	->	%We have to delete this Client
-								{lists:delete(Tuple,ClientList),AtmList};
+				{_,Pin,Money} 	->	%We have to delete this Client and extract the money from the bank
+								{lists:delete(Tuple,ClientList),AtmList,Balance-Money};
 				_			->	%The pin is incorrect
 								wrong_pin
 			end
@@ -137,7 +154,7 @@ close_account({ClientList,AtmList},ClientId,Pin)->
 
 %connect_atm(Data,Atm,Money)->
 %disconnect_atm(Data,Atm)->
-withdraw_money({ClientList,AtmList},ClientId,Pin,Money)->
+withdraw_money({ClientList,AtmList,Balance},ClientId,Pin,Money)->
 	case Money > 0 of
 		true 	->
 			case lists:keyfind(ClientId,1,ClientList) of
@@ -147,7 +164,8 @@ withdraw_money({ClientList,AtmList},ClientId,Pin,Money)->
 						true ->
 							{
 								lists:keyreplace(ClientId, 1, ClientList, {ClientId,Pin,OldMoney-Money}),
-								AtmList
+								AtmList,
+								Balance
 							};
 						false -> not_enough_money
 					end;
@@ -155,20 +173,21 @@ withdraw_money({ClientList,AtmList},ClientId,Pin,Money)->
 			end; 
 		false	-> wrong_quantity
 	end.
-deposit_money({ClientList,AtmList},ClientId,Pin,Money)->
+deposit_money({ClientList,AtmList,Balance},ClientId,Pin,Money)->
 	case Money > 0 of
 		true ->
 			case lists:keyfind(ClientId,1,ClientList) of
 				false			-> user_doesnt_exists;
 				{_,Pin,OldMoney}-> {
 										lists:keyreplace(ClientId, 1, ClientList, {ClientId,Pin,OldMoney+Money}),
-										AtmList
+										AtmList,
+										Balance+Money
 									};
 				_				-> wrong_ping 
 			end;
 		false ->	wrong_quantity
 	end.
-check_money({ClientList,_},ClientId,Pin)-> 
+check_money({ClientList,_,_},ClientId,Pin)-> 
 	case lists:keyfind(ClientId,1,ClientList) of
 		false			-> user_doesnt_exists;
 		{_,Pin,Money}	-> Money;
