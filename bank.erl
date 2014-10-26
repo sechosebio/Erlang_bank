@@ -108,6 +108,18 @@ bank(Data)->
 										Pid ! lists:concat(["User have ",Money,"€\n"]),
 										bank(Data)
 			end;
+		{connectAtm,AtmId,Money,Pid}->
+			case connect_atm(Data,AtmId,Money) of
+				atm_already_connected	-> 	io:format("Atm is already connected\n"),
+											Pid ! "Atm is already connected\n",
+											bank(Data);
+				wrong_quantity			->	io:format("Money must be > 0€\n"),
+											Pid ! "Money must be > 0€\n",
+											bank(Data);
+				Tuple 					->	io:format("Atm connected with success\n"),
+											Pid ! "Atm connected with success\n",
+											bank(Tuple)
+			end;
 
 		%FUNCTION FOR DEBUGGING
 		stop -> Data;
@@ -125,17 +137,19 @@ open_account({ClientList,AtmList,Balance},ClientId,Pin,Money) ->
 			%keyfind(Key, N, TupleList) -> Tuple | false 
 			%N is the position of the key in the tuple
 			case lists:keyfind(ClientId,1,ClientList) of
-				false ->
+				false 	->
 					%Create new Tuple in the Client List that represents the Client data
 					{lists:append(ClientList,[{ClientId,Pin,Money}]),AtmList,Balance+Money};
-				_->
+				_		->
 					%Client exist, we do nothing
 					user_exists	
 			end;
 		false	-> wrong_quantity
 	end.
 
-
+%%
+% Precondition:		The client exists and the Pin is correct
+% Postcondition;	The account is closed and the Money is extracted from the bank balance
 close_account({ClientList,AtmList,Balance},ClientId,Pin)->
 	case lists:keyfind(ClientId,1,ClientList) of
 		false->
@@ -151,9 +165,25 @@ close_account({ClientList,AtmList,Balance},ClientId,Pin)->
 			end
 	end.
 
+%%
+% Precondition: 	Atm doesn't exists, Money > 0
+% Postcondition: 	Atm is added to the AtmList and the Money of the Atm is added to the bank Balance
+connect_atm({ClientList,AtmList,Balance},AtmId,Money)->
+	case Money > 0 of
+		true 	->
+			case lists:keyfind(AtmId,1,AtmList) of
+				false			-> {ClientList,lists:append(AtmList,[{AtmId,Money}]),Balance+Money};
+				{_,_,_}			-> atm_already_connected				
+			end; 
+		false	-> wrong_quantity
+	end.
 
-%connect_atm(Data,Atm,Money)->
-%disconnect_atm(Data,Atm)->
+disconnect_atm({ClientList,AtmList,Balance},AtmId)->
+	case lists:keyfind(AtmId,1,AtmList) of
+		false			->	atm_doesnt_exists;
+		Tuple			->	{ClientList,AtmList,Balance-Money}
+	end; 
+
 withdraw_money({ClientList,AtmList,Balance},ClientId,Pin,Money)->
 	case Money > 0 of
 		true 	->
@@ -173,6 +203,11 @@ withdraw_money({ClientList,AtmList,Balance},ClientId,Pin,Money)->
 			end; 
 		false	-> wrong_quantity
 	end.
+
+%%
+% Precondition:		the user exists,the Pin is correct and the Money to deposit is > 0
+% Postcondition:	The money of the Client in the Client list is updated
+% 					The Balance of the Bank is updated, the money is in the Bank, no in a Atm
 deposit_money({ClientList,AtmList,Balance},ClientId,Pin,Money)->
 	case Money > 0 of
 		true ->
@@ -187,6 +222,9 @@ deposit_money({ClientList,AtmList,Balance},ClientId,Pin,Money)->
 			end;
 		false ->	wrong_quantity
 	end.
+%%
+% Precondition:		The user exists and the Pin is correct
+% Returns the Money of the client
 check_money({ClientList,_,_},ClientId,Pin)-> 
 	case lists:keyfind(ClientId,1,ClientList) of
 		false			-> user_doesnt_exists;

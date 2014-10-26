@@ -9,7 +9,7 @@
 -export([deposit_money/3,withdraw_money/3]).
 -define(BANK_NODE,'bank@anger-2').
 
-%connect(d)->
+connect(Money)->
 
 %disconnect()->
 
