@@ -78,7 +78,7 @@ bank(Data)->
 										Pid ! "Not enough money to withdraw\n",
 										bank(Data);
 				UpdatedData 		->	io:format("Withdrawed ~p€ of User Account\n",[Money]),
-										Pid ! lists:concat(["Withdrawed ",Money,"€ of User Account\n"]),
+										Pid ! {success,lists:concat(["Withdrawed ",Money,"€ of User Account\n"])},
 										bank(UpdatedData)
 			end;
 		{depositMoney,ClientId,Pin,Money,Pid}->			
@@ -93,7 +93,7 @@ bank(Data)->
 										Pid ! "Deposited Money must be > 0€\n",
 										bank(Data);
 				UpdatedData 		->	io:format("Added ~p€ to User Account\n",[Money]),
-										Pid ! lists:concat(["Added ",Money,"€ to User Account\n"]),
+										Pid ! {success,lists:concat(["Added ",Money,"€ to User Account\n"])},
 										bank(UpdatedData)
 			end;
 		{checkMoney,ClientId,Pin,Pid}->
