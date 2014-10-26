@@ -7,7 +7,7 @@
 %%%----------------------------------------------------------------------
 
 -module(bank).
--export([start/0,bank/1,open_account/4,close_account/3]).
+-export([start/0]).
 
 %%
 % Initiallize the bank process, register the processes with name bank
@@ -121,6 +121,16 @@ bank(Data)->
 											bank(Tuple)
 			end;
 
+		{disconnectAtm,AtmId,Pid}->
+			case disconnect_atm(Data,AtmId) of
+				atm_doesnt_exists	->	io:format("Atm doesn't exists\n"),
+										Pid ! "Atm doesn't exists\n",
+										bank(Data);
+				Tuple 				->	io:format("Atm disconnected from Bank\n"),
+										Pid ! "Atm disconnected from Bank\n",
+										bank(Tuple)
+			end;
+
 		%FUNCTION FOR DEBUGGING
 		stop -> Data;
 		%END FUNCTION FOR DEBUGGING
@@ -180,9 +190,9 @@ connect_atm({ClientList,AtmList,Balance},AtmId,Money)->
 
 disconnect_atm({ClientList,AtmList,Balance},AtmId)->
 	case lists:keyfind(AtmId,1,AtmList) of
-		false			->	atm_doesnt_exists;
-		Tuple			->	{ClientList,AtmList,Balance-Money}
-	end; 
+		false									->	atm_doesnt_exists;
+		{AtmId,Money}	->	{ClientList,lists:delete({AtmId,Money},AtmList),Balance-Money}
+	end.
 
 withdraw_money({ClientList,AtmList,Balance},ClientId,Pin,Money)->
 	case Money > 0 of
